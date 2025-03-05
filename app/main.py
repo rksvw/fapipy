@@ -15,6 +15,7 @@ class Post(BaseModel):
     rating: Optional[int] = None
 
 
+# Here I learn how to use FastAPI and some CRUD operation [get, post & delete]
 # data
 my_posts = [
     {"title": "title of post 1", "content": "content of post 1", "id": 1},
@@ -31,7 +32,7 @@ def find_post(id):
             return p
 
 
-def find_n_delete(id):
+def find_idx(id):
     for i, p in enumerate(my_posts):
         if p["id"] == id:
             return i
@@ -81,7 +82,7 @@ def get_post(id: int, res: Response):
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    idx = find_n_delete(id)
+    idx = find_idx(id)
 
     if idx == None:
         raise HTTPException(
@@ -91,3 +92,19 @@ def delete_post(id: int):
 
     my_posts.pop(idx)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.put("/posts/{id}")
+def update_post(id: int, post: Post):
+    idx = find_idx(id)
+
+    if idx == None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"post with id: {id} does not exist",
+        )
+
+    post_dict = post.dict()
+    post_dict["id"] = id  # Here we are creating new id post data
+    my_posts[idx] = post_dict  # Here we are storing the user generated data into post
+    return {"data": post_dict}  # Return the data
