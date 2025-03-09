@@ -8,7 +8,7 @@ import psycopg2 as pypg
 from psycopg2.extras import RealDictCursor
 from . import models
 from sqlalchemy.orm import Session
-from .db import engine, SessionLocal
+from .db import engine, get_db
 import os
 from dotenv import load_dotenv, dotenv_values
 
@@ -19,14 +19,6 @@ PASS = os.getenv("PASSWORD")
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Schema
