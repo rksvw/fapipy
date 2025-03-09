@@ -1,19 +1,32 @@
 from time import sleep
-import os
-from dotenv import load_dotenv, dotenv_values
 from typing import Optional
-from fastapi import FastAPI, Response, status, HTTPException
+from fastapi import FastAPI, Response, status, HTTPException, Depends
 from fastapi.params import Body
 from pydantic import BaseModel
 from random import randrange
 import psycopg2 as pypg
 from psycopg2.extras import RealDictCursor
-
-app = FastAPI()
+from . import models
+from sqlalchemy.orm import Session
+from .db import engine, SessionLocal
+import os
+from dotenv import load_dotenv, dotenv_values
 
 load_dotenv()
 
 PASS = os.getenv("PASSWORD")
+
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # Schema
@@ -72,6 +85,11 @@ async def root():  # Function
     return {
         "message": "Hello Monkeys!\nThis is Ritik"
     }  # Message python-dictionary || JSON
+
+
+@app.get("/sql")
+def test(db: Session = Depends(get_db)):
+    return {"status": "success"}
 
 
 @app.get("/post")
