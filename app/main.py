@@ -85,19 +85,22 @@ def get_posts():
 def create_posts(
     post: Post,
 ):  # Extract all the value from body and make python dictionary
-    post_dict = post.dict()
-    post_dict["id"] = randrange(0, 10000000)
-    my_posts.append(post_dict)
+    cursor.execute(
+        """INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
+        (post.title, post.content, post.published),
+    )
+    new_post = cursor.fetchone()
+    conn.commit()
 
     return {
-        "data": my_posts,
+        "data": new_post,
     }
 
 
 @app.get("/posts/{id}")
 def get_post(id: int, res: Response):
-    post = find_post(id)
-
+    cursor.execute("""SELECT * FROM posts WHERE id = %s""", (str(id),))
+    post = cursor.fetchone()
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -112,9 +115,11 @@ def get_post(id: int, res: Response):
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    idx = find_idx(id)
+    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""", (str(id),))
+    deleted_post = cursor.fetchone()
+    conn.commit()
 
-    if idx == None:
+    if deleted_post == None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"post with id: {id} does not exists.",
@@ -122,22 +127,22 @@ def delete_post(id: int):
         # SELECT * FROM products WHERE name LIKE '%en%';
         # SELECT * FROM products WHERE price > 10 LIMIT 5;
         # SELECT * FROM products ORDER BY id LIMIT 5 OFFSET 2;
-
-    my_posts.pop(idx)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.put("/posts/{id}")
 def update_post(id: int, post: Post):
-    idx = find_idx(id)
+    cursor.execute(
+        """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
+        (post.title, post.content, post.published, (str(id))),
+    )
 
-    if idx == None:
+    updated_post = cursor.fetchone()
+    conn.commit()
+
+    if not updated_post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"post with id: {id} does not exist",
         )
-
-    post_dict = post.dict()
-    post_dict["id"] = id  # Here we are creating new id post data
-    my_posts[idx] = post_dict  # Here we are storing the user generated data into post
-    return {"data": post_dict}  # Return the data
+    return {"data": updated_post}  # Return the data
