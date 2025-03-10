@@ -9,6 +9,7 @@ from psycopg2.extras import RealDictCursor
 from . import models
 from sqlalchemy.orm import Session
 from .db import engine, get_db
+from . import models
 import os
 from dotenv import load_dotenv, dotenv_values
 
@@ -81,13 +82,15 @@ async def root():  # Function
 
 @app.get("/sql")
 def test(db: Session = Depends(get_db)):
-    return {"status": "success"}
+    posts = db.query(models.Post).all()
+    return {"status": "success", "data": posts}
 
 
-@app.get("/post")
-def get_posts():
-    cursor.execute("""SELECT * FROM posts""")
-    posts = cursor.fetchall()
+@app.get("/posts")
+def get_posts(db: Session = Depends(get_db)):
+    # cursor.execute("""SELECT * FROM posts""")
+    # posts = cursor.fetchall()
+    posts = db.query(models.Post).all()
     return {"message": "Post retrive Successfully", "data": posts}
 
 
