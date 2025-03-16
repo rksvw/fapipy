@@ -1,12 +1,8 @@
 from time import sleep
-from typing import Optional
 from fastapi import FastAPI, Response, status, HTTPException, Depends
-from fastapi.params import Body
-from pydantic import BaseModel
-from random import randrange
 import psycopg2 as pypg
 from psycopg2.extras import RealDictCursor
-from . import models
+from . import models, schema
 from sqlalchemy.orm import Session
 from .db import engine, get_db
 from . import models
@@ -20,13 +16,6 @@ PASS = os.getenv("PASSWORD")
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-
-# Schema
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
 
 
 while True:
@@ -79,23 +68,17 @@ async def root():  # Function
     }  # Message python-dictionary || JSON
 
 
-@app.get("/sql")
-def test(db: Session = Depends(get_db)):
-    posts = db.query(models.Post).all()
-    return {"status": "success", "data": posts}
-
-
 @app.get("/posts")
 def get_posts(db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts""")
     # posts = cursor.fetchall()
     posts = db.query(models.Post).all()
-    return {"message": "Post retrive Successfully", "data": posts}
+    return posts
 
 
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
+@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model=schema.Post)
 def create_posts(
-    post: Post, db: Session = Depends(get_db)
+    post: schema.PostCreate, db: Session = Depends(get_db)
 ):  # Extract all the value from body and make python dictionary
     # cursor.execute(
     #     """INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
@@ -115,9 +98,7 @@ def create_posts(
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
-    return {
-        "data": new_post,
-    }
+    return new_post
 
 
 @app.get("/posts/{id}")
@@ -131,7 +112,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
             detail=f"post with id: {id} was not found",
         )
 
-    return {"data": post}
+    return post
 
 
 # title: str, content: str
@@ -159,7 +140,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/posts/{id}")
-def update_post(id: int, up_post: Post, db: Session = Depends(get_db)):
+def update_post(id: int, up_post: schema.PostCreate, db: Session = Depends(get_db)):
     # cursor.execute(
     # """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
     # (post.title, post.content, post.published, (str(id))),
@@ -177,4 +158,4 @@ def update_post(id: int, up_post: Post, db: Session = Depends(get_db)):
         )
     updated_post.update(up_post.dict(), synchronize_session=False)
     db.commit()
-    return {"data": updated_post.first()}  # Return the data
+    return updated_post.first()  # Return the data
