@@ -1,6 +1,7 @@
 from time import sleep
 from fastapi import FastAPI, Response, status, HTTPException, Depends
 import psycopg2 as pypg
+from typing import Optional, List
 from psycopg2.extras import RealDictCursor
 from . import models, schema
 from sqlalchemy.orm import Session
@@ -68,7 +69,7 @@ async def root():  # Function
     }  # Message python-dictionary || JSON
 
 
-@app.get("/posts")
+@app.get("/posts", response_model=List[schema.Post])
 def get_posts(db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts""")
     # posts = cursor.fetchall()
@@ -101,7 +102,7 @@ def create_posts(
     return new_post
 
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schema.Post)
 def get_post(id: int, db: Session = Depends(get_db)):
     # cursor.execute("""SELECT * FROM posts WHERE id = %s""", (str(id),))
     # post = cursor.fetchone()
@@ -139,7 +140,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.put("/posts/{id}")
+@app.put("/posts/{id}", response_model=schema.Post)
 def update_post(id: int, up_post: schema.PostCreate, db: Session = Depends(get_db)):
     # cursor.execute(
     # """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
