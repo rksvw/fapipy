@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from .db import engine, get_db
 from . import models
 import os
+import app.util as util
 from dotenv import load_dotenv, dotenv_values
 
 load_dotenv()
@@ -164,6 +165,11 @@ def update_post(id: int, up_post: schema.PostCreate, db: Session = Depends(get_d
 
 @app.post("/signin", status_code=status.HTTP_201_CREATED, response_model=schema.UserOut)
 def create_user(user: schema.UserCreate, db: Session = Depends(get_db)):
+
+    # Has the password - user.password
+    hash_password = util.hash_me(user.password)
+    user.password = hash_password
+
     new_user = models.User(**user.dict())
     db.add(new_user)
     db.commit()
