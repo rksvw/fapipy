@@ -1,15 +1,15 @@
 from time import sleep
 from fastapi import FastAPI, Response, status, HTTPException, Depends
 import psycopg2 as pypg
-from typing import Optional, List
 from psycopg2.extras import RealDictCursor
 from . import models, schema
 from sqlalchemy.orm import Session
 from .db import engine, get_db
 from . import models
 import os
-import app.util as util
-from dotenv import load_dotenv, dotenv_values
+from dotenv import load_dotenv
+
+from .routers import post, user
 
 load_dotenv()
 
@@ -62,116 +62,14 @@ def find_idx(id):
             return i
 
 
+# Middleware (use === include_router) method
+app.include_router(post.router)
+app.include_router(user.router)
+
+
 # Path Operations || Routes
 @app.get("/")  # Decorators : Turns the code to path
 async def root():  # Function
     return {
         "message": "Hello Monkeys!\nThis is Ritik"
     }  # Message python-dictionary || JSON
-
-
-@app.get("/posts", response_model=List[schema.Post])
-def get_posts(db: Session = Depends(get_db)):
-    # cursor.execute("""SELECT * FROM posts""")
-    # posts = cursor.fetchall()
-    posts = db.query(models.Post).all()
-    return posts
-
-
-@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model=schema.Post)
-def create_posts(
-    post: schema.PostCreate, db: Session = Depends(get_db)
-):  # Extract all the value from body and make python dictionary
-    # cursor.execute(
-    #     """INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
-    #     (post.title, post.content, post.published),
-    # )
-    # new_post = cursor.fetchone()
-    # conn.commit()
-
-    # More easier way to input the client data into server
-    # new_post = models.Post(
-    # title=post.title, content=post.content, published=post.published
-    # )
-
-    # Convert the post schema to json
-    new_post = models.Post(**post.dict())
-
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
-    return new_post
-
-
-@app.get("/posts/{id}", response_model=schema.Post)
-def get_post(id: int, db: Session = Depends(get_db)):
-    # cursor.execute("""SELECT * FROM posts WHERE id = %s""", (str(id),))
-    # post = cursor.fetchone()
-    post = db.query(models.Post).filter(models.Post.id == id).first()
-    if not post:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"post with id: {id} was not found",
-        )
-
-    return post
-
-
-# title: str, content: str
-
-
-@app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int, db: Session = Depends(get_db)):
-    # cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""", (str(id),))
-    # deleted_post = cursor.fetchone()
-    # conn.commit()
-    deleted_post = db.query(models.Post).filter(models.Post.id == id)
-
-    if deleted_post.first() == None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"post with id: {id} does not exists.",
-        )
-        # SELECT * FROM products WHERE name LIKE '%en%';
-        # SELECT * FROM products WHERE price > 10 LIMIT 5;
-        # SELECT * FROM products ORDER BY id LIMIT 5 OFFSET 2;
-    deleted_post.delete(synchronize_session=False)
-    db.commit()
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@app.put("/posts/{id}", response_model=schema.Post)
-def update_post(id: int, up_post: schema.PostCreate, db: Session = Depends(get_db)):
-    # cursor.execute(
-    # """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
-    # (post.title, post.content, post.published, (str(id))),
-    # )
-    updated_post = db.query(models.Post).filter(models.Post.id == id)
-
-    # updated_post = cursor.fetchone()
-    # conn.commit()
-    post_query = updated_post.first()
-
-    if not post_query:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"post with id: {id} does not exist",
-        )
-    updated_post.update(up_post.dict(), synchronize_session=False)
-    db.commit()
-    return updated_post.first()  # Return the data
-
-
-@app.post("/signin", status_code=status.HTTP_201_CREATED, response_model=schema.UserOut)
-def create_user(user: schema.UserCreate, db: Session = Depends(get_db)):
-
-    # Has the password - user.password
-    hash_password = util.hash_me(user.password)
-    user.password = hash_password
-
-    new_user = models.User(**user.dict())
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
