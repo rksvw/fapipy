@@ -9,7 +9,7 @@ from . import models
 import os
 from dotenv import load_dotenv
 
-from .routers import post, user
+from .routers import post, user, auth
 
 load_dotenv()
 
@@ -65,6 +65,7 @@ def find_idx(id):
 # Middleware (use === include_router) method
 app.include_router(post.router)
 app.include_router(user.router)
+app.include_router(auth.router)
 
 
 # Path Operations || Routes
